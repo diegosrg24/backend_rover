@@ -1,17 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-import models
-import schemas
 from database import SessionLocal, engine, Base
+from models import Reading
 
-# Crear las tablas
+# Crear tablas en la base de datos si no existen
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Dependencia
-
-
+# Dependency para obtener DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -19,16 +16,10 @@ def get_db():
     finally:
         db.close()
 
-
-@app.post("/users/", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = models.User(name=user.name, email=user.email)
-    db.add(db_user)
+@app.post("/data")
+def receive_data(name: str, value: float, db: Session = Depends(get_db)):
+    reading = Reading(name=name, value=value)
+    db.add(reading)
     db.commit()
-    db.refresh(db_user)
-    return db_user
-
-
-@app.get("/users/", response_model=list[schemas.User])
-def read_users(db: Session = Depends(get_db)):
-    return db.query(models.User).all()
+    db.refresh(reading)
+    return {"message": "Datos recibidos correctamente", "data_id": reading.id}
